@@ -56,6 +56,9 @@ class Client
 
     /** @var JsonRpc\Client */
     private $client;
+    
+    /** @var string Key to sign the message with. Signature gets added to the 'sign'-header */
+    private $secretKey;
 
     /**
      * Construct a JSON-RPC 2.0 client. This will allow you to send queries
@@ -95,7 +98,7 @@ class Client
      * @link http://php.net/manual/en/context.http.php HTTP context options
      * @link http://php.net/manual/en/context.ssl.php SSL context options
      */
-    public function __construct($uri, $headers = null, $options = null)
+    public function __construct($uri, $headers = null, $options = null, $secretKey = null)
     {
         $this->requiredHttpHeaders = array(
             'Accept' => self::$CONTENT_TYPE,
@@ -112,6 +115,7 @@ class Client
         $this->headers = $headers;
         $this->context = $context;
         $this->client = $client;
+        $this->secretKey = $secretKey;
     }
 
     public function notify($method, $arguments = null)
@@ -204,6 +208,10 @@ class Client
     {
         $headers = $this->headers;
         $headers['Content-Length'] = strlen($content);
+        if ($this->secretKey) {
+            $headers['sign'] = hash_hmac("sha512", $content, $this->secretKey);
+        }
+        
         $header = self::getHeaderText($headers);
 
         $options = array(
@@ -274,7 +282,7 @@ class Client
 
         $supportedOptions = array(
             'http' => true,
-            'ssl' => true
+            'ssl' => true,
         );
 
         return array_intersect_key($options, $supportedOptions);
